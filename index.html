@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Drum Machine - Interactive Beat Creator</title>
+    <meta name="description" content="Create beats with our interactive web-based drum machine featuring 10 drum sounds, step sequencer, and real-time controls.">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --drum-bg: hsl(0 0% 11.7647%);
+            --drum-secondary: hsl(0 0% 20%);
+            --drum-accent: hsl(186.8672 100% 50%);
+            --drum-active: hsl(16.0256 100% 59.8039%);
+            --drum-border: hsl(0 0% 26.6667%);
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--drum-bg);
+            color: white;
+        }
+        
+        .grid-cols-16 {
+            grid-template-columns: repeat(16, minmax(0, 1fr));
+        }
+        
+        .drum-pad {
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            user-select: none;
+        }
+        
+        .drum-pad:hover {
+            filter: brightness(1.1);
+            transform: scale(1.05);
+        }
+        
+        .drum-pad:active,
+        .drum-pad.pressed {
+            transform: scale(0.95);
+            filter: brightness(1.25);
+        }
+        
+        .step-button {
+            transition: all 0.2s ease;
+        }
+        
+        .step-button.active {
+            background-color: var(--drum-active);
+        }
+        
+        .step-button:hover:not(.active) {
+            background-color: var(--drum-active);
+            opacity: 0.7;
+        }
+        
+        .current-step {
+            background-color: var(--drum-accent);
+            opacity: 1;
+        }
+        
+        .transport-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .transport-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .transport-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .transport-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold mb-2" style="color: var(--drum-accent)">
+                <i class="fas fa-drum mr-3"></i>Web Drum Machine
+            </h1>
+            <p class="text-gray-400 text-lg">Create beats with our interactive drum sequencer</p>
+        </div>
+
+        <!-- Main Control Panel -->
+        <div class="rounded-2xl shadow-2xl p-6 md:p-8 mb-8" style="background-color: var(--drum-secondary)">
+            <!-- Transport Controls -->
+            <div class="mb-8">
+                <div class="flex justify-center items-center gap-4">
+                    <button id="playBtn" class="transport-btn bg-green-500 hover:bg-green-600 disabled:opacity-50 rounded-full w-16 h-16 flex items-center justify-center text-2xl">
+                        <i class="fas fa-play ml-1"></i>
+                    </button>
+                    
+                    <button id="pauseBtn" class="transport-btn bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 rounded-full w-16 h-16 flex items-center justify-center text-2xl" disabled>
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    
+                    <button id="stopBtn" class="transport-btn bg-red-500 hover:bg-red-600 rounded-full w-16 h-16 flex items-center justify-center text-2xl">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    
+                    <button id="clearBtn" class="transport-btn bg-gray-600 hover:bg-gray-700 rounded-full w-16 h-16 flex items-center justify-center text-2xl">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pattern Presets -->
+            <div class="mb-8">
+                <h3 class="text-lg font-bold text-center mb-4" style="color: var(--drum-accent)">Pattern Presets</h3>
+                <div class="flex justify-center gap-3 flex-wrap">
+                    <button id="presetDemo" class="preset-btn px-4 py-2 rounded-lg font-medium transition-colors" style="background-color: var(--drum-border); color: white;">
+                        Demo Beat
+                    </button>
+                    <button id="presetTomFill" class="preset-btn px-4 py-2 rounded-lg font-medium transition-colors" style="background-color: var(--drum-border); color: white;">
+                        Tom Fill
+                    </button>
+                    <button id="presetTribal" class="preset-btn px-4 py-2 rounded-lg font-medium transition-colors" style="background-color: var(--drum-border); color: white;">
+                        Tribal Toms
+                    </button>
+                </div>
+            </div>
+
+            <!-- BPM Control -->
+            <div class="mb-8">
+                <div class="flex flex-col items-center">
+                    <label class="text-lg font-semibold mb-2" style="color: var(--drum-accent)">BPM</label>
+                    <div class="flex items-center gap-4">
+                        <button id="bpmDown" class="w-10 h-10 rounded-full flex items-center justify-center transition-colors" style="background-color: var(--drum-border);">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        
+                        <div id="bpmDisplay" class="bg-black rounded-lg px-6 py-3 text-2xl font-bold min-w-[80px] text-center" style="color: var(--drum-accent)">
+                            120
+                        </div>
+                        
+                        <button id="bpmUp" class="w-10 h-10 rounded-full flex items-center justify-center transition-colors" style="background-color: var(--drum-border);">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    
+                    <input id="bpmSlider" type="range" min="60" max="200" value="120" class="w-64 mt-4" style="accent-color: var(--drum-accent)">
+                </div>
+            </div>
+        </div>
+
+        <!-- Drum Pads Section -->
+        <div class="rounded-2xl shadow-2xl p-6 md:p-8 mb-8" style="background-color: var(--drum-secondary)">
+            <h2 class="text-2xl font-bold text-center mb-6" style="color: var(--drum-accent)">Drum Pads</h2>
+            <div id="drumPads" class="grid grid-cols-2 md:grid-cols-5 gap-4 max-w-5xl mx-auto">
+                <!-- Drum pads will be generated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Step Sequencer -->
+        <div class="rounded-2xl shadow-2xl p-6 md:p-8" style="background-color: var(--drum-secondary)">
+            <h2 class="text-2xl font-bold text-center mb-6" style="color: var(--drum-accent)">Step Sequencer</h2>
+            
+            <!-- Step Numbers -->
+            <div class="grid grid-cols-16 gap-1 mb-4 max-w-full overflow-x-auto">
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">1</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">2</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">3</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">4</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">5</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">6</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">7</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">8</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">9</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">10</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">11</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">12</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">13</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">14</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">15</div>
+                <div class="text-center text-xs text-gray-400 font-medium min-w-[40px]">16</div>
+            </div>
+
+            <!-- Current Step Indicator -->
+            <div id="stepIndicator" class="grid grid-cols-16 gap-1 mb-4">
+                <!-- Step indicators will be generated by JavaScript -->
+            </div>
+
+            <!-- Sequencer Grid -->
+            <div id="sequencerGrid" class="space-y-2 overflow-x-auto">
+                <!-- Sequencer grid will be generated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="rounded-2xl shadow-2xl p-6 md:p-8 mt-8" style="background-color: var(--drum-secondary)">
+            <h3 class="text-xl font-bold mb-4 text-center" style="color: var(--drum-accent)">How to Use</h3>
+            <div class="grid md:grid-cols-2 gap-6 text-sm text-gray-300">
+                <div>
+                    <h4 class="font-semibold text-white mb-2">Drum Pads</h4>
+                    <ul class="space-y-1">
+                        <li>• Click any drum pad to trigger its sound</li>
+                        <li>• 10 drums: Kick, Snare, Hi-hats, Crash, Ride, 3 Toms, Clap</li>
+                        <li>• Tom 1: High rack tom with punchy attack</li>
+                        <li>• Tom 2: Mid tom with rich harmonics</li>
+                        <li>• Tom 3: Deep floor tom with sub-bass frequencies</li>
+                        <li>• Pads are touch-friendly for mobile devices</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white mb-2">Step Sequencer</h4>
+                    <ul class="space-y-1">
+                        <li>• Click grid buttons to program your beat</li>
+                        <li>• Orange buttons are active steps</li>
+                        <li>• Current step is highlighted in cyan</li>
+                        <li>• Use pattern presets to explore tom drum styles</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white mb-2">Transport Controls</h4>
+                    <ul class="space-y-1">
+                        <li>• Green: Play the sequencer</li>
+                        <li>• Yellow: Pause playback</li>
+                        <li>• Red: Stop and reset to beginning</li>
+                        <li>• Gray: Clear all patterns</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white mb-2">BPM Control</h4>
+                    <ul class="space-y-1">
+                        <li>• Adjust tempo from 60-200 BPM</li>
+                        <li>• Use +/- buttons or drag the slider</li>
+                        <li>• Changes take effect immediately</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+class DrumMachine {
+    constructor() {
+        this.audioContext = null;
+        this.soundBuffers = [];
+        this.isPlaying = false;
+        this.currentStep = 0;
+        this.bpm = 120;
+        this.pattern = [];
+        this.nextStepTime = 0;
+        this.sequencerTimer = null;
+        this.isAudioInitialized = false;
+        
+        this.drumSounds = [
+            {
+                name: 'KICK',
+                color: 'from-red-500 to-red-700',
+                icon: 'fas fa-circle',
+                textColor: 'text-red-400'
+            },
+            {
+                name: 'SNARE',
+                color: 'from-blue-500 to-blue-700',
+                icon: 'fas fa-square',
+                textColor: 'text-blue-400'
+            },
+            {
+                name: 'HH CLOSED',
+                color: 'from-yellow-500 to-yellow-700',
+                icon: 'fas fa-minus',
+                textColor: 'text-yellow-400'
+            },
+            {
+                name: 'HH OPEN',
+                color: 'from-orange-500 to-orange-700',
+                icon: 'fas fa-circle-notch',
+                textColor: 'text-orange-400'
+            },
+            {
+                name: 'CRASH',
+                color: 'from-purple-500 to-purple-700',
+                icon: 'fas fa-star',
+                textColor: 'text-purple-400'
+            },
+            {
+                name: 'RIDE',
+                color: 'from-green-500 to-green-700',
+                icon: 'fas fa-record-vinyl',
+                textColor: 'text-green-400'
+            },
+            {
+                name: 'TOM 1',
+                color: 'from-pink-500 to-pink-700',
+                icon: 'fas fa-dot-circle',
+                textColor: 'text-pink-400'
+            },
+            {
+                name: 'TOM 2',
+                color: 'from-indigo-500 to-indigo-700',
+                icon: 'fas fa-circle-dot',
+                textColor: 'text-indigo-400'
+            },
+            {
+                name: 'TOM 3',
+                color: 'from-violet-500 to-violet-700',
+                icon: 'fas fa-bullseye',
+                textColor: 'text-violet-400'
+            },
+            {
+                name: 'CLAP',
+                color: 'from-teal-500 to-teal-700',
+                icon: 'fas fa-hands',
+                textColor: 'text-teal-400'
+            }
+        ];
+        
+        this.initializePattern();
+        this.setupEventListeners();
+        this.createDrumPads();
+        this.createSequencer();
+        this.loadDemoPattern();
+    }
+    
+    initializePattern() {
+        this.pattern = this.drumSounds.map(() => Array(16).fill(false));
+    }
+    
+    async initializeAudio() {
+        if (this.isAudioInitialized) return;
+        
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.soundBuffers = this.drumSounds.map((sound, index) => this.generateDrumSound(index));
+            this.isAudioInitialized = true;
+        } catch (error) {
+            console.error('Failed to initialize audio:', error);
+        }
+    }
+    
+    generateDrumSound(drumIndex) {
+        const sampleRate = this.audioContext.sampleRate;
+        let length, buffer, data;
+        
+        switch(drumIndex) {
+            case 0: // KICK
+                length = sampleRate * 0.3;
+                buffer = this.audioContext.createBuffer(1, length, sampleRate);
+                data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate;
+                    const envelope = Math.pow(Math.E, -t * 30);
+                    const frequency = 60 * envelope + 40;
+                    data[i] = Math.sin(2 * Math.PI * frequency * t) * envelope * 0.8;
+                }
+                break;
+                
+            case 1: // SNARE
+                length = sampleRate * 0.2;
+                buffer = this.audioContext.createBuffer(1, length, sampleRate);
+                data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate;
+                    const envelope = Math.pow(Math.E, -t * 15);
+                    const noise = (Math.random() * 2 - 1) * envelope * 0.5;
+                    const tone = Math.sin(2 * Math.PI * 200 * t) * envelope * 0.3;
+                    data[i] = noise + tone;
+                }
+                break;
+                
+            case 2: // HH CLOSED
+                length = sampleRate * 0.1;
+                buffer = this.audioContext.createBuffer(1, length, sampleRate);
+                data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate;
+                    const envelope = Math.pow(Math.E, -t * 40);
+                    data[i] = (Math.random() * 2 - 1) * envelope * 0.3;
+                }
+                break;
+                
+            case 3: // HH OPEN
+                length = sampleRate * 0.3;
+                buffer = this.audioContext.createBuffer(1, length, sampleRate);
+                data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate;
+                    const envelope = Math.pow(Math.E, -t * 8);
+                    data[i] = (Math.random() * 2 - 1) * envelope * 0.2;
+                }
+                break;
+                
+            case 4: // CRASH
+                length = sampleRate * 1.0;
+                buffer = this.audioContext.createBuffer(1, length, sampleRate);
+                data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate;
+                    const envelope = Math.pow(Math.E, -t * 3);
+                    data[i] = (Math.random() * 2 - 1) * envelope * 0.4;
+                }
+                break;
+                
+            case 5: // RIDE
+                length = sampleRate * 0.5;
+                buffer = this.audioContext.createBuffer(1, length, sampleRate);
+                data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate;
+                    const envelope = Math.pow(Math.E, -t * 5);
+                    const highFreq = Math.sin(2 * Math.PI * 2000 * t) * 0.1;
+                    const noise = (Math.random() * 2 - 1) * 0.2;
+                    data[i] = (highFreq + noise) * envelope;
+                }
+                break;
+                
+            case 6: // TOM 1
+                length = sampleRate * 0.6;
+                buffer = this.audioContext.createBuffer(1, length, sampleRate);
+                data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate;
+                    const envelope = Math.pow(Math.E, -t * 6);
+                    const fundamentalFreq = 200 * Math.pow(Math.E, -t * 4) + 150;
+                    const harmonicFreq = 300 * Math.pow(Math.E, -t * 8) + 200;
+                    const attack = t < 0.01 ? Math.pow(t / 0.01, 0.3) : 1;
+                    const fundamental = Math.sin(2 * Math.PI * fundamentalFreq * t);
+                    const harmonic = Math.sin(2 * Math.PI * harmonicFreq * t) * 0.3;
+                    const noise = (Math.random() * 2 - 1) * 0.1;
+                    data[i] = (fundamental + harmonic + noise) * envelope * attack * 0.7;
+                }
+                break;
+                
+            case 7: // TOM 2
+                length = sampleRate * 0.7;
+                buffer = this.audioContext.createBuffer(1, length, sampleRate);
+                data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate;
+                    const envelope = Math.pow(Math.E, -t * 5);
+                    const fundamentalFreq = 140 * Math.pow(Math.E, -t * 3) + 110;
+                    const harmonicFreq = 210 * Math.pow(Math.E, -t * 6) + 160;
+                    const attack = t < 0.015 ? Math.pow(t / 0.015, 0.4) : 1;
+                    const fundamental = Math.sin(2 * Math.PI * fundamentalFreq * t);
+                    const harmonic = Math.sin(2 * Math.PI * harmonicFreq * t) * 0.4;
+                    const subharmonic = Math.sin(2 * Math.PI * (fundamentalFreq * 0.5) * t) * 0.2;
+                    const noise = (Math.random() * 2 - 1) * 0.08;
+                    data[i] = (fundamental + harmonic + subharmonic + noise) * envelope * attack * 0.8;
+                }
+                break;
+                
+            case 8: // TOM 3
+                length = sampleRate * 0.8;
+                buffer = this.audioContext.createBuffer(1, length, sampleRate);
+                data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate;
+                    const envelope = Math.pow(Math.E, -t * 4);
+                    const fundamentalFreq = 80 * Math.pow(Math.E, -t * 2) + 65;
+                    const harmonicFreq = 120 * Math.pow(Math.E, -t * 4) + 95;
+                    const attack = t < 0.02 ? Math.pow(t / 0.02, 0.5) : 1;
+                    const fundamental = Math.sin(2 * Math.PI * fundamentalFreq * t);
+                    const harmonic = Math.sin(2 * Math.PI * harmonicFreq * t) * 0.5;
+                    const subharmonic = Math.sin(2 * Math.PI * (fundamentalFreq * 0.5) * t) * 0.3;
+                    const ultraLow = Math.sin(2 * Math.PI * (fundamentalFreq * 0.25) * t) * 0.15;
+                    const noise = (Math.random() * 2 - 1) * 0.06;
+                    data[i] = (fundamental + harmonic + subharmonic + ultraLow + noise) * envelope * attack * 0.9;
+                }
+                break;
+                
+            case 9: // CLAP
+                length = sampleRate * 0.15;
+                buffer = this.audioContext.createBuffer(1, length, sampleRate);
+                data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    const t = i / sampleRate;
+                    let envelope = 0;
+                    if (t < 0.01 || (t > 0.03 && t < 0.04) || (t > 0.06 && t < 0.07)) {
+                        envelope = Math.pow(Math.E, -(t % 0.01) * 100);
+                    }
+                    data[i] = (Math.random() * 2 - 1) * envelope * 0.5;
+                }
+                break;
+        }
+        
+        return buffer;
+    }
+    
+    async playSound(soundIndex) {
+        if (!this.isAudioInitialized) {
+            await this.initializeAudio();
+        }
+        
+        if (!this.audioContext || !this.soundBuffers[soundIndex]) return;
+        
+        try {
+            const source = this.audioContext.createBufferSource();
+            const gainNode = this.audioContext.createGain();
+            
+            source.buffer = this.soundBuffers[soundIndex];
+            source.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            gainNode.gain.setValueAtTime(0.7, this.audioContext.currentTime);
+            source.start();
+        } catch (error) {
+            console.error('Failed to play sound:', error);
+        }
+    }
+    
+    scheduleSound(soundIndex, time) {
+        if (!this.audioContext || !this.soundBuffers[soundIndex]) return;
+        
+        try {
+            const source = this.audioContext.createBufferSource();
+            const gainNode = this.audioContext.createGain();
+            
+            source.buffer = this.soundBuffers[soundIndex];
+            source.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            gainNode.gain.setValueAtTime(0.7, time);
+            source.start(time);
+        } catch (error) {
+            console.error('Failed to schedule sound:', error);
+        }
+    }
+    
+    createDrumPads() {
+        const container = document.getElementById('drumPads');
+        
+        this.drumSounds.forEach((sound, index) => {
+            const pad = document.createElement('button');
+            pad.className = `drum-pad bg-gradient-to-br ${sound.color} hover:brightness-110 rounded-xl h-24 md:h-32 flex flex-col items-center justify-center text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 active:scale-95 active:shadow-lg touch-manipulation select-none`;
+            
+            pad.innerHTML = `
+                <i class="${sound.icon} text-2xl mb-1"></i>
+                <span class="text-sm md:text-base">${sound.name}</span>
+            `;
+            
+            pad.addEventListener('mousedown', () => {
+                pad.classList.add('pressed');
+                this.playSound(index);
+            });
+            
+            pad.addEventListener('mouseup', () => {
+                pad.classList.remove('pressed');
+            });
+            
+            pad.addEventListener('mouseleave', () => {
+                pad.classList.remove('pressed');
+            });
+            
+            pad.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                pad.classList.add('pressed');
+                this.playSound(index);
+            });
+            
+            pad.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                pad.classList.remove('pressed');
+            });
+            
+            container.appendChild(pad);
+        });
+    }
+    
+    createSequencer() {
+        this.createStepIndicator();
+        this.createSequencerGrid();
+    }
+    
+    createStepIndicator() {
+        const container = document.getElementById('stepIndicator');
+        
+        for (let i = 0; i < 16; i++) {
+            const indicator = document.createElement('div');
+            indicator.className = 'h-3 rounded-full min-w-[40px] transition-all duration-200 bg-gray-600 opacity-50';
+            indicator.id = `step-indicator-${i}`;
+            container.appendChild(indicator);
+        }
+    }
+    
+    createSequencerGrid() {
+        const container = document.getElementById('sequencerGrid');
+        
+        this.drumSounds.forEach((sound, soundIndex) => {
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-1';
+            
+            const label = document.createElement('div');
+            label.className = `w-20 text-sm font-semibold flex-shrink-0 ${sound.textColor}`;
+            label.textContent = sound.name;
+            row.appendChild(label);
+            
+            const stepsContainer = document.createElement('div');
+            stepsContainer.className = 'grid grid-cols-16 gap-1 flex-1';
+            
+            for (let stepIndex = 0; stepIndex < 16; stepIndex++) {
+                const stepButton = document.createElement('button');
+                stepButton.className = 'step-button h-8 rounded min-w-[40px] transition-all duration-200';
+                stepButton.style.backgroundColor = 'var(--drum-border)';
+                stepButton.id = `step-${soundIndex}-${stepIndex}`;
+                
+                stepButton.addEventListener('click', () => {
+                    this.toggleStep(soundIndex, stepIndex);
+                });
+                
+                stepsContainer.appendChild(stepButton);
+            }
+            
+            row.appendChild(stepsContainer);
+            container.appendChild(row);
+        });
+    }
+    
+    toggleStep(soundIndex, stepIndex) {
+        this.pattern[soundIndex][stepIndex] = !this.pattern[soundIndex][stepIndex];
+        this.updateStepButton(soundIndex, stepIndex);
+    }
+    
+    updateStepButton(soundIndex, stepIndex) {
+        const button = document.getElementById(`step-${soundIndex}-${stepIndex}`);
+        if (this.pattern[soundIndex][stepIndex]) {
+            button.classList.add('active');
+            button.style.backgroundColor = 'var(--drum-active)';
+        } else {
+            button.classList.remove('active');
+            button.style.backgroundColor = 'var(--drum-border)';
+        }
+    }
+    
+    updateSequencer() {
+        for (let soundIndex = 0; soundIndex < this.drumSounds.length; soundIndex++) {
+            for (let stepIndex = 0; stepIndex < 16; stepIndex++) {
+                this.updateStepButton(soundIndex, stepIndex);
+            }
+        }
+    }
+    
+    updateStepIndicator() {
+        for (let i = 0; i < 16; i++) {
+            const indicator = document.getElementById(`step-indicator-${i}`);
+            if (i === this.currentStep && this.isPlaying) {
+                indicator.className = 'h-3 rounded-full min-w-[40px] transition-all duration-200 current-step';
+                indicator.style.backgroundColor = 'var(--drum-accent)';
+            } else {
+                indicator.className = 'h-3 rounded-full min-w-[40px] transition-all duration-200 bg-gray-600 opacity-50';
+                indicator.style.backgroundColor = '';
+            }
+        }
+    }
+    
+    stepDuration() {
+        return (60 / this.bpm / 4); // 16th note duration in seconds
+    }
+    
+    scheduler() {
+        if (!this.isPlaying || !this.audioContext) return;
+        
+        const currentTime = this.audioContext.currentTime;
+        const stepTime = this.stepDuration();
+        
+        // Schedule ahead by 100ms
+        while (this.nextStepTime < currentTime + 0.1) {
+            // Play sounds for current step
+            this.pattern.forEach((soundPattern, soundIndex) => {
+                if (soundPattern[this.currentStep]) {
+                    this.scheduleSound(soundIndex, this.nextStepTime);
+                }
+            });
+            
+            this.currentStep = (this.currentStep + 1) % 16;
+            this.nextStepTime += stepTime;
+        }
+        
+        this.updateStepIndicator();
+        
+        if (this.isPlaying) {
+            this.sequencerTimer = requestAnimationFrame(() => this.scheduler());
+        }
+    }
+    
+    async play() {
+        if (!this.isAudioInitialized) {
+            await this.initializeAudio();
+        }
+        
+        if (!this.isPlaying) {
+            this.isPlaying = true;
+            this.nextStepTime = this.audioContext.currentTime;
+            this.scheduler();
+            
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+        }
+    }
+    
+    pause() {
+        this.isPlaying = false;
+        if (this.sequencerTimer) {
+            cancelAnimationFrame(this.sequencerTimer);
+            this.sequencerTimer = null;
+        }
+        
+        document.getElementById('playBtn').disabled = false;
+        document.getElementById('pauseBtn').disabled = true;
+        this.updateStepIndicator();
+    }
+    
+    stop() {
+        this.isPlaying = false;
+        this.currentStep = 0;
+        if (this.sequencerTimer) {
+            cancelAnimationFrame(this.sequencerTimer);
+            this.sequencerTimer = null;
+        }
+        
+        document.getElementById('playBtn').disabled = false;
+        document.getElementById('pauseBtn').disabled = true;
+        this.updateStepIndicator();
+    }
+    
+    clear() {
+        this.initializePattern();
+        this.updateSequencer();
+    }
+    
+    setBPM(newBPM) {
+        this.bpm = Math.max(60, Math.min(200, newBPM));
+        document.getElementById('bpmDisplay').textContent = this.bpm;
+        document.getElementById('bpmSlider').value = this.bpm;
+    }
+    
+    loadDemoPattern() {
+        const demoPattern = this.drumSounds.map(() => Array(16).fill(false));
+        // Kick drum pattern
+        demoPattern[0][0] = true;
+        demoPattern[0][4] = true;
+        demoPattern[0][8] = true;
+        demoPattern[0][12] = true;
+        // Snare on 2 and 4
+        demoPattern[1][4] = true;
+        demoPattern[1][12] = true;
+        // Hi-hat closed pattern
+        for (let i = 0; i < 16; i += 2) {
+            demoPattern[2][i] = true;
+        }
+        // Hi-hat open accents
+        demoPattern[3][6] = true;
+        demoPattern[3][14] = true;
+        // Crash on first beat
+        demoPattern[4][0] = true;
+        // Ride cymbal on off-beats
+        demoPattern[5][2] = true;
+        demoPattern[5][10] = true;
+        // Tom fill pattern - cascading high to low
+        demoPattern[6][6] = true;
+        demoPattern[6][7] = true;
+        demoPattern[7][7] = true;
+        demoPattern[7][8] = true;
+        demoPattern[7][14] = true;
+        demoPattern[8][8] = true;
+        demoPattern[8][15] = true;
+        // Clap on syncopated beats
+        demoPattern[9][3] = true;
+        demoPattern[9][11] = true;
+        
+        this.pattern = demoPattern;
+        this.updateSequencer();
+    }
+    
+    loadTomFillPattern() {
+        const tomPattern = this.drumSounds.map(() => Array(16).fill(false));
+        // Basic kick and snare
+        tomPattern[0][0] = true;
+        tomPattern[0][8] = true;
+        tomPattern[1][4] = true;
+        tomPattern[1][12] = true;
+        // Tom fill cascade
+        tomPattern[6][2] = true;
+        tomPattern[6][3] = true;
+        tomPattern[6][10] = true;
+        tomPattern[6][11] = true;
+        tomPattern[7][3] = true;
+        tomPattern[7][4] = true;
+        tomPattern[7][11] = true;
+        tomPattern[7][12] = true;
+        tomPattern[8][4] = true;
+        tomPattern[8][5] = true;
+        tomPattern[8][12] = true;
+        tomPattern[8][13] = true;
+        
+        this.pattern = tomPattern;
+        this.updateSequencer();
+    }
+    
+    loadTribalPattern() {
+        const tribalPattern = this.drumSounds.map(() => Array(16).fill(false));
+        // Tom-focused tribal pattern
+        tribalPattern[6][0] = true;
+        tribalPattern[6][2] = true;
+        tribalPattern[6][8] = true;
+        tribalPattern[6][10] = true;
+        tribalPattern[7][1] = true;
+        tribalPattern[7][4] = true;
+        tribalPattern[7][9] = true;
+        tribalPattern[7][12] = true;
+        tribalPattern[8][3] = true;
+        tribalPattern[8][6] = true;
+        tribalPattern[8][11] = true;
+        tribalPattern[8][14] = true;
+        // Add some claps for rhythm
+        tribalPattern[9][1] = true;
+        tribalPattern[9][5] = true;
+        tribalPattern[9][9] = true;
+        tribalPattern[9][13] = true;
+        
+        this.pattern = tribalPattern;
+        this.updateSequencer();
+    }
+    
+    setupEventListeners() {
+        // Transport controls
+        document.getElementById('playBtn').addEventListener('click', () => this.play());
+        document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+        document.getElementById('stopBtn').addEventListener('click', () => this.stop());
+        document.getElementById('clearBtn').addEventListener('click', () => this.clear());
+        
+        // Pattern presets
+        document.getElementById('presetDemo').addEventListener('click', () => this.loadDemoPattern());
+        document.getElementById('presetTomFill').addEventListener('click', () => this.loadTomFillPattern());
+        document.getElementById('presetTribal').addEventListener('click', () => this.loadTribalPattern());
+        
+        // BPM controls
+        document.getElementById('bpmUp').addEventListener('click', () => this.setBPM(this.bpm + 5));
+        document.getElementById('bpmDown').addEventListener('click', () => this.setBPM(this.bpm - 5));
+        document.getElementById('bpmSlider').addEventListener('input', (e) => this.setBPM(parseInt(e.target.value)));
+        
+        // Preset button hover effects
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                btn.style.backgroundColor = 'var(--drum-active)';
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.backgroundColor = 'var(--drum-border)';
+            });
+        });
+    }
+}
+
+// Initialize the drum machine when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    const drumMachine = new DrumMachine();
+});
+</script>
+</body>
+</html>
